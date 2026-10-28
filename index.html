@@ -35,6 +35,10 @@ header{display:flex;flex-direction:column;gap:4px;border-bottom:3px double var(-
 h1{font-family:var(--f-display);font-weight:900;font-size:clamp(26px,6vw,36px);margin:0;letter-spacing:.06em;text-wrap:balance}
 .sub{color:var(--muted);margin:0;font-size:14px}
 
+.picker{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.picker label{font-family:var(--f-display);font-weight:700;letter-spacing:.1em}
+.picker select{font:inherit;font-size:16px;padding:9px 12px;border:1.5px solid var(--ink);background:var(--sheet);color:var(--ink);min-width:0;flex:1 1 220px;max-width:360px}
+.picker select:focus-visible{outline:2px solid var(--seal);outline-offset:2px}
 .tabs{display:flex;gap:0;border:1px solid var(--ink);width:fit-content}
 .tabs button{font:inherit;font-weight:500;background:transparent;color:var(--ink);border:0;padding:8px 18px;cursor:pointer}
 .tabs button+button{border-left:1px solid var(--ink)}
@@ -105,10 +109,10 @@ footer{font-size:12px;color:var(--muted);text-align:center}
   </div>
 
   <section id="view-gen" style="display:flex;flex-direction:column;gap:20px">
+    <div class="picker"><label for="issue">議題</label><select id="issue"></select></div>
     <div class="sheet">
       <dl>
         <div class="row"><dt>案由</dt><dd id="topic"></dd></div>
-        <div class="row"><dt>發言人</dt><dd id="speaker"></dd></div>
         <div class="row"><dt>發言內容</dt><dd><div class="quote" id="quote"></div></dd></div>
         <div class="row"><dt>空洞指數</dt><dd>
           <div class="meter"><div class="bar"><i id="bar"></i></div><span class="num" id="score"></span><span class="tier" id="tier"></span></div>
@@ -156,47 +160,66 @@ const DEFER=["再研議","會後再找相關處室討論","下次會議再提","
 const CONSEQ=["評鑑的時候會比較難呈現","成果冊會不好寫","家長那邊可能會有聲音","教育處可能會來問","跟計畫目標會扣不太起來","明年經費可能會受影響"];
 const ABSTRACT=["核心價值","精神","脈絡","底層邏輯","初衷","整體架構"];
 const CLOSE=["以上，謝謝。","這是我一點小小的想法。","大概是這樣，時間關係就不多說。","不知道大家覺得怎麼樣？","以上報告。",""];
-const TOPICS=["本學期校慶籌備事宜","午餐廚餘減量方案","下學年課程計畫備查","走廊盆栽澆水排班","運動會進場順序","教室冷氣使用規範","家長日流程調整","資源回收場清潔分配","校園網路頻寬不足","影印機紙張用量控管"];
-const SPEAKERS=["教務處 林主任","學務處 張組長","總務處 吳主任","輔導室 黃老師","六年三班 導師","家長會 副會長","資訊組 組長","特教組 蔡老師"];
+const TOPICS=[
+ {n:"生生用平板",s:"生生用平板",t:["數位學習","載具管理","數位學習平台","科技輔助自主學習","MDM派送","資訊融入教學"],p:["充電車的插座不夠","平板收回來常常少一台","一到上課網路就卡","家長擔心孩子的視力"]},
+ {n:"SDGs永續發展教育",s:"SDGs",t:["SDGs","永續發展","17項目標","淨零排放","議題融入","全球公民"],p:["海報比賽每年都在做","資源回收場已經很滿了","活動要對應哪幾項目標每次都對不起來"]},
+ {n:"SEL社會情緒學習",s:"SEL",t:["SEL","社會情緒學習","情緒覺察","正向管教","心理韌性","關係技巧"],p:["導師時間已經被各種宣導佔滿","輔導室人力有限","有些家長覺得情緒不用教"]},
+ {n:"雙語教育",s:"雙語教育",t:["雙語教育","CLIL","全英語授課","外師協同","國際接軌","課室英語"],p:["外師一週只來兩天","體育課用英文孩子聽不懂","雙語研習時間都撞到"]},
+ {n:"素養導向教學",s:"素養導向",t:["素養導向","核心素養","三面九項","學習表現","學習內容","總綱精神"],p:["評量最後還是在考課本","教案格式又改了","家長還是只看分數"]},
+ {n:"校訂課程與彈性學習",s:"校訂課程",t:["校訂課程","彈性學習課程","課程地圖","主題探究","跨領域統整","學校願景"],p:["課程計畫備查的格式很繁瑣","節數怎麼排都排不進去","協同教學的鐘點費"]},
+ {n:"生成式AI融入教學",s:"AI融入教學",t:["生成式AI","AI素養","提示詞","人機協作","資訊倫理","AI融入教學"],p:["學生作業開始用AI寫","工具有帳號年齡限制","老師自己都還不太會用"]},
+ {n:"閱讀素養推動",s:"閱讀推動",t:["閱讀素養","PISA","晨讀","深度閱讀","圖書館利用教育","閱讀理解策略"],p:["晨讀時間常被拿去考試","圖書館沒有專職人力","孩子只想看漫畫"]},
+ {n:"公開授課與專業社群",s:"公開授課",t:["公開授課","教師專業社群","共同備課","觀課議課","學習觀察","專業回饋"],p:["觀課紀錄要填三份表單","找不到人來觀課","議課時間大家都要接小孩"]},
+ {n:"國際教育2.0",s:"國際教育",t:["國際教育2.0","國際交流","SIEP","全球議題","視訊交流","國際移動力"],p:["跟國外學校很難約時間","計畫書要附英文版","經費核銷很複雜"]},
+ {n:"學習扶助",s:"學習扶助",t:["學習扶助","科技化評量","補救教學","個別化指導","提報率","進步率"],p:["學扶班常常開不成","授課老師要先上完研習","施測時間跟段考撞期"]},
+ {n:"戶外教育與食農教育",s:"戶外教育",t:["戶外教育","食農教育","在地文化","校外教學","體驗學習","地方創生"],p:["遊覽車費用又漲了","學校菜圃放假沒人澆水","安全計畫書寫得很厚"]},
+ {n:"性平教育與防制霸凌",s:"性平教育",t:["性別平等教育","防制校園霸凌","友善校園","尊重多元","通報流程","修復式正義"],p:["通報時限很趕","調查小組成員很難找","宣導週活動彼此重疊"]},
+ {n:"運算思維與程式教育",s:"程式教育",t:["運算思維","程式設計","STEAM","科技教育","問題解決","自造教育"],p:["電腦教室的電腦很舊","機器人套件常常少零件","國小沒有科技領域的節數"]},
+];
 const STAMPS=["照案\n通過","再議","同意\n備查","會後\n討論","列入\n追蹤","已閱"];
 
 const M=s=>`<mark>${s}</mark>`;
 const B=()=>M(pick(BUZZ));
+const shuffle=a=>[...a].sort(()=>Math.random()-.5);
 const PREAMBLE=["首先謝謝主席給我這個發言的機會，","那個……麥克風有聲音嗎？好，","大家辛苦了，開了這麼久我就長話短說，","剛剛聽了各處室的報告其實很有感觸，","我本來不打算講的，但是想一想還是講一下，",""];
 const LINK=["那其實，","再來就是，","另外一個部分是，","回到剛剛講的，","當然，","坦白說，","我的意思是說，","換句話說，","然後，","所以，"];
+/* x = context: x.N topic name, x.T() topic term (no repeats until deck runs out), x.P() practical pain */
 const SEG=[
- ()=>`這個案子是不是可以從${B()}的角度，${pick(VERB)}一下${B()}？`,
- ()=>`我覺得${B()}這個部分還是要${pick(VERB)}，不然${pick(CONSEQ)}。`,
- ()=>`回應一下剛剛${pick(PERSON)}的意見，${B()}跟${B()}其實是一體兩面。`,
- ()=>`這個案子原則上大家都同意，只是${B()}的部分，細節可能還要再想一下。`,
- ()=>`我們要思考的其實不是${B()}，而是${B()}背後的${pick(ABSTRACT)}。`,
- ()=>`這個我們去年其實就有在做了，只是沒有用${B()}的方式包裝進成果冊。`,
- ()=>`如果把${B()}、${B()}跟${B()}串起來，${pick(VERB)}成一個亮點，${pick(["評鑑的時候就很好呈現","成果冊自己就會長出來","教育處一定會想來參訪","明年的計畫也就有了"])}。`,
- ()=>`我在第一線看到的是，孩子其實很需要${B()}，只是我們大人有沒有準備好。`,
- ()=>`上次研習講師也有提到${B()}，我覺得滿有啟發的，可以跟我們學校的${pick(ABSTRACT)}做一個連結。`,
- ()=>`我不是說現在的做法不好，只是如果能再${pick(VERB)}一下，會更貼近${B()}的${pick(ABSTRACT)}。`,
- ()=>`這部分可能也要考量到行政負擔，畢竟大家都很忙，${B()}不能變成另一個負擔。`,
- ()=>`其他學校好像有在推${B()}，我們可以去做一個標竿學習，看看人家怎麼${pick(VERB)}。`,
- ()=>`重點還是在於，我們有沒有把${B()}真正落實到教室現場，而不是停留在${B()}的口號。`,
- ()=>`這件事情如果我們現在不做，${pick(CONSEQ)}，到時候反而更麻煩。`,
- ()=>`我自己的班上也有試過一點${B()}，效果因人而異，不過方向是對的。`,
+ x=>`這個案子是不是可以從${x.T()}的角度，${pick(VERB)}一下${x.T()}？`,
+ x=>`我覺得${x.T()}這個部分還是要${pick(VERB)}，不然${pick(CONSEQ)}。`,
+ x=>`回應一下剛剛${pick(PERSON)}的意見，${x.T()}跟${x.T()}其實是一體兩面。`,
+ x=>`推${x.N}原則上大家都同意，只是${x.T()}的部分，細節可能還要再想一下。`,
+ x=>`我們要思考的其實不是${x.T()}，而是${x.T()}背後的${pick(ABSTRACT)}。`,
+ x=>`${x.N}我們去年其實就有在做了，只是沒有用${x.T()}的方式包裝進成果冊。`,
+ x=>`如果把${x.T()}、${x.T()}跟${B()}串起來，${pick(VERB)}成一個亮點，${pick(["評鑑的時候就很好呈現","成果冊自己就會長出來","教育處一定會想來參訪","明年的計畫也就有了"])}。`,
+ x=>`我在第一線看到的是，孩子其實很需要${x.T()}，只是我們大人有沒有準備好。`,
+ x=>`上次研習講師也有提到${x.T()}，我覺得滿有啟發的，可以跟我們學校的${pick(ABSTRACT)}做一個連結。`,
+ x=>`我不是說現在的${x.N}做得不好，只是如果能再${pick(VERB)}一下，會更貼近${x.T()}的${pick(ABSTRACT)}。`,
+ x=>`現場也有實際的困難，像是${x.P()}，${x.T()}不能變成另一個負擔。`,
+ x=>`隔壁學校好像也在推${x.T()}，我們可以去做一個標竿學習，看看人家怎麼${pick(VERB)}。`,
+ x=>`重點還是在於，我們有沒有把${x.T()}真正落實到教室現場，而不是停留在${x.N}的口號。`,
+ x=>`我自己的班上也有試過一點${x.T()}，效果因人而異，不過方向是對的。`,
+ x=>`我知道${x.P()}，但這不正是我們${pick(VERB)}${x.T()}的契機嗎？`,
+ x=>`講到${x.P()}，這其實也跟${B()}有關，建議一併考量。`,
+ x=>`這件事如果我們現在不做，${pick(CONSEQ)}，到時候${x.N}反而更難推。`,
 ];
 const ENDING=[
- ()=>`所以我的建議是，${pick(DEFER)}。`,
- ()=>`這個可能就${pick(DEFER)}，看大家意見怎麼樣。`,
- ()=>`建議可以成立一個${B()}工作小組，先盤點一下現有資源再說。`,
- ()=>`當然這只是我個人的淺見，最後還是尊重主席的裁示。`,
+ x=>`所以我的建議是，${x.N}的部分${pick(DEFER)}。`,
+ x=>`${x.N}這個可能就${pick(DEFER)}，看大家意見怎麼樣。`,
+ x=>`建議可以成立一個${M(x.N)}工作小組，先盤點一下現有資源再說。`,
+ x=>`當然這只是我對${x.N}的一點淺見，最後還是尊重主席的裁示。`,
 ];
 const plain=h=>h.replace(/<\/?mark>/g,"");
-function compose(){
+function compose(tp){
+  let deck=[],pains=shuffle(tp.p);
+  const x={N:tp.s,T:()=>{if(!deck.length)deck=shuffle(tp.t);return M(deck.pop())},P:()=>pains.length?pains.pop():pick(tp.p)};
   const target=110+Math.floor(Math.random()*80);
-  const pool=[...SEG].sort(()=>Math.random()-.5);
+  const links=shuffle(LINK);
   const head=pick(PREAMBLE)+pick(OPEN)+"，";
-  const links=[...LINK].sort(()=>Math.random()-.5);
-  const tail=pick(ENDING)()+pick(CLOSE);
+  const tail=pick(ENDING)(x)+pick(CLOSE);
   let body=[],len=plain(head+tail).length;
-  for(const f of pool){
-    const s=(body.length?links[body.length-1]:"")+f();
+  for(const f of shuffle(SEG)){
+    const s=(body.length?links[body.length-1]:"")+f(x);
     const l=plain(s).length;
     if(len+l>200)continue;
     body.push(s);len+=l;
@@ -209,12 +232,13 @@ let current="",hist=[];
 const $=id=>document.getElementById(id);
 
 function generate(){
-  const html=compose();
+  const sel=$("issue").value;
+  const tp=sel==="rand"?pick(TOPICS):TOPICS[+sel];
+  const html=compose(tp);
   const buzz=(html.match(/<mark>/g)||[]).length;
   current=plain(html);
   const score=Math.min(99,30+buzz*7+Math.floor(Math.random()*12));
-  $("topic").textContent=pick(TOPICS);
-  $("speaker").textContent=pick(SPEAKERS);
+  $("topic").textContent=tp.n+"推動事宜"+(sel==="rand"?"（隨機）":"");
   $("quote").innerHTML=html;
   $("bar").style.width=score+"%";
   $("score").textContent=score;
@@ -225,9 +249,11 @@ function generate(){
   hist.unshift(current);hist=hist.slice(0,5);
   $("hist").innerHTML=hist.slice(1).map(h=>`<li>${h}</li>`).join("")||'<li>尚無其他發言。</li>';
 }
+$("issue").innerHTML='<option value="rand">🎲 隨機議題</option>'+TOPICS.map((t,i)=>`<option value="${i}">${t.n}</option>`).join("");
+$("issue").onchange=generate;
 $("gen").onclick=generate;
 document.addEventListener("keydown",e=>{
-  if(e.code==="Space"&&!$("view-gen").hidden&&e.target.tagName!=="BUTTON"){e.preventDefault();generate()}
+  if(e.code==="Space"&&!$("view-gen").hidden&&!["BUTTON","SELECT"].includes(e.target.tagName)){e.preventDefault();generate()}
 });
 $("copy").onclick=()=>{
   const t=$("toast");
