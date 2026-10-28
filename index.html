@@ -48,7 +48,7 @@ button:focus-visible{outline:2px solid var(--seal);outline-offset:2px}
 .row>dd{padding:10px 14px;margin:0;min-width:0}
 dl{margin:0}
 
-.quote{font-family:var(--f-hand);font-size:clamp(20px,4.6vw,25px);line-height:1.75;min-height:7.5em;padding-right:72px}
+.quote{font-family:var(--f-hand);font-size:clamp(17px,4vw,21px);line-height:1.8;min-height:11em;padding-right:72px}
 .quote mark{background:linear-gradient(transparent 62%,var(--seal-soft) 62%);color:inherit}
 
 .stamp{position:absolute;right:14px;top:58px;width:84px;height:84px;border:3px solid var(--seal);border-radius:50%;
@@ -161,33 +161,65 @@ const SPEAKERS=["教務處 林主任","學務處 張組長","總務處 吳主任
 const STAMPS=["照案\n通過","再議","同意\n備查","會後\n討論","列入\n追蹤","已閱"];
 
 const M=s=>`<mark>${s}</mark>`;
-const TEMPLATES=[
- ()=>{const[a,b]=pick2(BUZZ);return `${pick(OPEN)}，這個案子是不是可以從${M(a)}的角度，${pick(VERB)}一下${M(b)}？${pick(CLOSE)}`},
- ()=>`${pick(OPEN)}，我覺得${M(pick(BUZZ))}這個部分還是要${pick(VERB)}，不然${pick(CONSEQ)}。${pick(CLOSE)}`,
- ()=>{const[a,b]=pick2(BUZZ);return `回應一下剛剛${pick(PERSON)}的意見，${M(a)}跟${M(b)}其實是一體兩面，我們可以${pick(VERB)}之後再${pick(DEFER)}。${pick(CLOSE)}`},
- ()=>`這個案子原則上大家都同意，只是${M(pick(BUZZ))}的部分，可能還是要${pick(DEFER)}。${pick(CLOSE)}`,
- ()=>{const[a,b]=pick2(BUZZ);return `我們要思考的其實不是${M(a)}，而是${M(b)}背後的${pick(ABSTRACT)}。${pick(CLOSE)}`},
- ()=>`這個我們去年其實就有在做了，只是沒有用${M(pick(BUZZ))}的方式包裝進成果冊。建議${pick(DEFER)}。${pick(CLOSE)}`,
- ()=>{const[a,b]=pick2(BUZZ);return `${pick(OPEN)}，建議成立一個${M(a)}工作小組，先做${M(b)}，再${pick(VERB)}。${pick(CLOSE)}`},
- ()=>{const[a,b]=pick2(BUZZ);const c=pick(BUZZ);return `${pick(OPEN)}，如果我們把${M(a)}、${M(b)}跟${M(c)}串起來，${pick(VERB)}成一個亮點，${pick(["評鑑的時候就很好呈現","成果冊自己就會長出來","教育處一定會想來參訪","明年的計畫也就有了"])}。${pick(CLOSE)}`}
+const B=()=>M(pick(BUZZ));
+const PREAMBLE=["首先謝謝主席給我這個發言的機會，","那個……麥克風有聲音嗎？好，","大家辛苦了，開了這麼久我就長話短說，","剛剛聽了各處室的報告其實很有感觸，","我本來不打算講的，但是想一想還是講一下，",""];
+const LINK=["那其實，","再來就是，","另外一個部分是，","回到剛剛講的，","當然，","坦白說，","我的意思是說，","換句話說，","然後，","所以，"];
+const SEG=[
+ ()=>`這個案子是不是可以從${B()}的角度，${pick(VERB)}一下${B()}？`,
+ ()=>`我覺得${B()}這個部分還是要${pick(VERB)}，不然${pick(CONSEQ)}。`,
+ ()=>`回應一下剛剛${pick(PERSON)}的意見，${B()}跟${B()}其實是一體兩面。`,
+ ()=>`這個案子原則上大家都同意，只是${B()}的部分，細節可能還要再想一下。`,
+ ()=>`我們要思考的其實不是${B()}，而是${B()}背後的${pick(ABSTRACT)}。`,
+ ()=>`這個我們去年其實就有在做了，只是沒有用${B()}的方式包裝進成果冊。`,
+ ()=>`如果把${B()}、${B()}跟${B()}串起來，${pick(VERB)}成一個亮點，${pick(["評鑑的時候就很好呈現","成果冊自己就會長出來","教育處一定會想來參訪","明年的計畫也就有了"])}。`,
+ ()=>`我在第一線看到的是，孩子其實很需要${B()}，只是我們大人有沒有準備好。`,
+ ()=>`上次研習講師也有提到${B()}，我覺得滿有啟發的，可以跟我們學校的${pick(ABSTRACT)}做一個連結。`,
+ ()=>`我不是說現在的做法不好，只是如果能再${pick(VERB)}一下，會更貼近${B()}的${pick(ABSTRACT)}。`,
+ ()=>`這部分可能也要考量到行政負擔，畢竟大家都很忙，${B()}不能變成另一個負擔。`,
+ ()=>`其他學校好像有在推${B()}，我們可以去做一個標竿學習，看看人家怎麼${pick(VERB)}。`,
+ ()=>`重點還是在於，我們有沒有把${B()}真正落實到教室現場，而不是停留在${B()}的口號。`,
+ ()=>`這件事情如果我們現在不做，${pick(CONSEQ)}，到時候反而更麻煩。`,
+ ()=>`我自己的班上也有試過一點${B()}，效果因人而異，不過方向是對的。`,
 ];
-const TIERS=[[40,"尚有一點內容"],[60,"標準會議水準"],[80,"可直接抄進會議紀錄"],[101,"主席級發言"]];
-
+const ENDING=[
+ ()=>`所以我的建議是，${pick(DEFER)}。`,
+ ()=>`這個可能就${pick(DEFER)}，看大家意見怎麼樣。`,
+ ()=>`建議可以成立一個${B()}工作小組，先盤點一下現有資源再說。`,
+ ()=>`當然這只是我個人的淺見，最後還是尊重主席的裁示。`,
+];
+const plain=h=>h.replace(/<\/?mark>/g,"");
+function compose(){
+  const target=110+Math.floor(Math.random()*80);
+  const pool=[...SEG].sort(()=>Math.random()-.5);
+  const head=pick(PREAMBLE)+pick(OPEN)+"，";
+  const links=[...LINK].sort(()=>Math.random()-.5);
+  const tail=pick(ENDING)()+pick(CLOSE);
+  let body=[],len=plain(head+tail).length;
+  for(const f of pool){
+    const s=(body.length?links[body.length-1]:"")+f();
+    const l=plain(s).length;
+    if(len+l>200)continue;
+    body.push(s);len+=l;
+    if(len>=target)break;
+  }
+  return head+body.join("")+tail;
+}
+const TIERS=[[50,"尚有一點內容"],[70,"標準會議水準"],[88,"可直接抄進會議紀錄"],[101,"主席級發言"]];
 let current="",hist=[];
 const $=id=>document.getElementById(id);
 
 function generate(){
-  const html=pick(TEMPLATES)();
+  const html=compose();
   const buzz=(html.match(/<mark>/g)||[]).length;
-  const score=Math.min(99,35+buzz*16+Math.floor(Math.random()*14));
-  current=html.replace(/<\/?mark>/g,"");
+  current=plain(html);
+  const score=Math.min(99,30+buzz*7+Math.floor(Math.random()*12));
   $("topic").textContent=pick(TOPICS);
   $("speaker").textContent=pick(SPEAKERS);
   $("quote").innerHTML=html;
   $("bar").style.width=score+"%";
   $("score").textContent=score;
   $("tier").textContent=TIERS.find(t=>score<t[0])[1];
-  $("mins").textContent=(2+Math.floor(Math.random()*6))+" 分鐘（含「我很快講一下」）";
+  $("mins").textContent=(Math.ceil(current.length/45)+2+Math.floor(Math.random()*4))+" 分鐘（全文 "+current.length+" 字，含「我很快講一下」）";
   const st=$("stamp");st.innerHTML=pick(STAMPS).replace("\n","<br>");
   st.classList.remove("pop");void st.offsetWidth;st.classList.add("pop");
   hist.unshift(current);hist=hist.slice(0,5);
