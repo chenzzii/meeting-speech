@@ -52,7 +52,7 @@ button:focus-visible{outline:2px solid var(--seal);outline-offset:2px}
 .row>dd{padding:10px 14px;margin:0;min-width:0}
 dl{margin:0}
 
-.quote{font-family:var(--f-hand);font-size:clamp(17px,4vw,21px);line-height:1.8;min-height:11em;padding-right:72px}
+.quote{font-family:var(--f-hand);font-size:clamp(16px,3.7vw,19px);line-height:1.85;min-height:18em;padding-right:72px}
 .quote mark{background:linear-gradient(transparent 62%,var(--seal-soft) 62%);color:inherit}
 
 .stamp{position:absolute;right:14px;top:58px;width:84px;height:84px;border:3px solid var(--seal);border-radius:50%;
@@ -182,7 +182,7 @@ const M=s=>`<mark>${s}</mark>`;
 const B=()=>M(pick(BUZZ));
 const shuffle=a=>[...a].sort(()=>Math.random()-.5);
 const PREAMBLE=["首先謝謝主席給我這個發言的機會，","那個……麥克風有聲音嗎？好，","大家辛苦了，開了這麼久我就長話短說，","剛剛聽了各處室的報告其實很有感觸，","我本來不打算講的，但是想一想還是講一下，",""];
-const LINK=["那其實，","再來就是，","另外一個部分是，","回到剛剛講的，","當然，","坦白說，","我的意思是說，","換句話說，","然後，","所以，"];
+const LINK=["接下來，","我再補充一點，","呃，","那回過頭來說，","此外，","其實，","那其實，","再來就是，","另外一個部分是，","回到剛剛講的，","當然，","坦白說，","我的意思是說，","換句話說，","然後，","所以，"];
 /* x = context: x.N topic name, x.T() topic term (no repeats until deck runs out), x.P() practical pain */
 const SEG=[
  x=>`這個案子是不是可以從${x.T()}的角度，${pick(VERB)}一下${x.T()}？`,
@@ -202,6 +202,18 @@ const SEG=[
  x=>`我知道${x.P()}，但這不正是我們${pick(VERB)}${x.T()}的契機嗎？`,
  x=>`講到${x.P()}，這其實也跟${B()}有關，建議一併考量。`,
  x=>`這件事如果我們現在不做，${pick(CONSEQ)}，到時候${x.N}反而更難推。`,
+ x=>`我舉個例子，之前我們在做${x.T()}的時候，一開始大家也是覺得很困難，但是做著做著，就慢慢${pick(VERB)}出一個方向了。`,
+ x=>`我們也不要忘記，${x.N}最終還是要回到孩子身上，如果孩子沒有感受到${x.T()}，那我們做再多都只是在填表。`,
+ x=>`這個跟上學期校務會議討論的${B()}其實也有點關係，我記得當時的結論是${pick(DEFER)}，不知道後來有沒有下文？`,
+ x=>`我也很能理解行政的立場，${x.P()}這種事情不是一個處室可以解決的，需要大家一起來${pick(VERB)}。`,
+ x=>`從家長的角度來看，他們可能不太懂什麼是${x.T()}，所以我們在宣導上可能要再更白話一點。`,
+ x=>`教育處那邊好像也有${x.T()}相關的計畫可以申請，經費雖然不多，但至少可以讓我們先${pick(VERB)}一下。`,
+ x=>`我們是不是可以先找一兩個班試辦${x.T()}，有成效之後再全校推動，這樣比較有說服力。`,
+ x=>`說到底，${x.N}不是一個活動，而是一種${pick(ABSTRACT)}，要內化到我們每一堂課裡面。`,
+ x=>`我剛剛有稍微查了一下，${x.T()}在國外其實已經推很多年了，我們現在開始做也不算晚。`,
+ x=>`我們也可以想一想，${x.T()}跟我們學校的${pick(["在地特色","學校願景","校本課程","社區資源"])}要怎麼扣合，這樣會比較有${pick(ABSTRACT)}。`,
+ x=>`我覺得${x.N}要成功，關鍵還是在老師，老師的${x.T()}能力提升了，學生自然就會跟著改變。`,
+ x=>`當然經費也是一個問題，像${x.P()}這件事，如果沒有資源支持，光靠熱情是走不久的。`,
 ];
 const ENDING=[
  x=>`所以我的建議是，${x.N}的部分${pick(DEFER)}。`,
@@ -213,18 +225,20 @@ const plain=h=>h.replace(/<\/?mark>/g,"");
 function compose(tp){
   let deck=[],pains=shuffle(tp.p);
   const x={N:tp.s,T:()=>{if(!deck.length)deck=shuffle(tp.t);return M(deck.pop())},P:()=>pains.length?pains.pop():pick(tp.p)};
-  const target=110+Math.floor(Math.random()*80);
+  const target=320+Math.floor(Math.random()*150);
+  const three=Math.random()<.4;
   const links=shuffle(LINK);
-  const head=pick(PREAMBLE)+pick(OPEN)+"，";
+  const head=pick(PREAMBLE)+pick(OPEN)+"，"+(three?"我大概分三點來講。":"");
   const tail=pick(ENDING)(x)+pick(CLOSE);
   let body=[],len=plain(head+tail).length;
   for(const f of shuffle(SEG)){
-    const s=(body.length?links[body.length-1]:"")+f(x);
+    const s=(body.length?links[(body.length-1)%links.length]:"")+f(x);
     const l=plain(s).length;
-    if(len+l>200)continue;
+    if(len+l>(three?470:500))continue;
     body.push(s);len+=l;
     if(len>=target)break;
   }
+  if(three)body.push("至於第三點……我想一下……剛剛好像已經講到了，那就先跳過。");
   return head+body.join("")+tail;
 }
 const TIERS=[[50,"尚有一點內容"],[70,"標準會議水準"],[88,"可直接抄進會議紀錄"],[101,"主席級發言"]];
@@ -247,7 +261,7 @@ function generate(){
   const st=$("stamp");st.innerHTML=pick(STAMPS).replace("\n","<br>");
   st.classList.remove("pop");void st.offsetWidth;st.classList.add("pop");
   hist.unshift(current);hist=hist.slice(0,5);
-  $("hist").innerHTML=hist.slice(1).map(h=>`<li>${h}</li>`).join("")||'<li>尚無其他發言。</li>';
+  $("hist").innerHTML=hist.slice(1).map(h=>`<li>${h.slice(0,70)}……</li>`).join("")||'<li>尚無其他發言。</li>';
 }
 $("issue").innerHTML='<option value="rand">🎲 隨機議題</option>'+TOPICS.map((t,i)=>`<option value="${i}">${t.n}</option>`).join("");
 $("issue").onchange=generate;
