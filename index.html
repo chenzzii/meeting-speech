@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>會議發言產生器</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@700;900&family=Noto+Sans+TC:wght@400;500;700&family=LXGW+WenKai+TC&display=swap">
+<style>
+/* Layout: a 會議紀錄 form — ruled rows, ink text, one vermilion 公文 stamp as the only loud thing */
+:root{
+  --paper:#f4f5f2; --sheet:#fdfdfb; --ink:#1c2333; --muted:#5b6374; --rule:#d5d9df;
+  --seal:#c4302a; --seal-soft:#c4302a1a; --hit:#1c2333;
+  --f-display:"Noto Serif TC","Songti TC","PMingLiU",serif;
+  --f-body:"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;
+  --f-hand:"LXGW WenKai TC","Kaiti TC","DFKai-SB","Noto Serif TC",serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --paper:#13161c; --sheet:#1b1f27; --ink:#e7e9ee; --muted:#9aa1b0; --rule:#2f3542;
+  --seal:#ec5a50; --seal-soft:#ec5a5022; --hit:#e7e9ee; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --paper:#13161c; --sheet:#1b1f27; --ink:#e7e9ee; --muted:#9aa1b0; --rule:#2f3542;
+  --seal:#ec5a50; --seal-soft:#ec5a5022; --hit:#e7e9ee; color-scheme:dark}
+
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.6}
+.wrap{max-width:720px;margin:0 auto;padding-block:28px 48px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  display:flex;flex-direction:column;gap:20px}
+
+header{display:flex;flex-direction:column;gap:4px;border-bottom:3px double var(--ink);padding-bottom:12px}
+.eyebrow{font-size:12px;letter-spacing:.2em;color:var(--muted)}
+h1{font-family:var(--f-display);font-weight:900;font-size:clamp(26px,6vw,36px);margin:0;letter-spacing:.06em;text-wrap:balance}
+.sub{color:var(--muted);margin:0;font-size:14px}
+
+.tabs{display:flex;gap:0;border:1px solid var(--ink);width:fit-content}
+.tabs button{font:inherit;font-weight:500;background:transparent;color:var(--ink);border:0;padding:8px 18px;cursor:pointer}
+.tabs button+button{border-left:1px solid var(--ink)}
+.tabs button[aria-selected="true"]{background:var(--ink);color:var(--sheet)}
+button:focus-visible{outline:2px solid var(--seal);outline-offset:2px}
+
+.sheet{background:var(--sheet);border:1px solid var(--rule);position:relative}
+.row{display:grid;grid-template-columns:88px 1fr;border-bottom:1px solid var(--rule)}
+.row:last-child{border-bottom:0}
+.row>dt{padding:10px 12px;border-right:1px solid var(--rule);color:var(--muted);font-size:13px;letter-spacing:.1em;margin:0}
+.row>dd{padding:10px 14px;margin:0;min-width:0}
+dl{margin:0}
+
+.quote{font-family:var(--f-hand);font-size:clamp(20px,4.6vw,25px);line-height:1.75;min-height:7.5em;padding-right:72px}
+.quote mark{background:linear-gradient(transparent 62%,var(--seal-soft) 62%);color:inherit}
+
+.stamp{position:absolute;right:14px;top:58px;width:84px;height:84px;border:3px solid var(--seal);border-radius:50%;
+  color:var(--seal);font-family:var(--f-display);font-weight:900;font-size:19px;line-height:1.15;
+  display:grid;place-items:center;text-align:center;transform:rotate(-14deg);opacity:.88;pointer-events:none}
+.stamp.pop{animation:stamp .32s cubic-bezier(.2,1.6,.4,1)}
+@keyframes stamp{from{transform:rotate(-14deg) scale(1.9);opacity:0}to{transform:rotate(-14deg) scale(1);opacity:.88}}
+
+.meter{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.bar{flex:1 1 140px;height:8px;background:var(--rule);position:relative;min-width:120px}
+.bar>i{position:absolute;inset:0 auto 0 0;background:var(--seal);transition:width .4s}
+.num{font-variant-numeric:tabular-nums;font-weight:700}
+.tier{font-size:13px;color:var(--seal);font-weight:700}
+
+.actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.btn{font:inherit;font-weight:700;padding:11px 22px;border:1.5px solid var(--ink);background:var(--sheet);color:var(--ink);cursor:pointer}
+.btn.primary{background:var(--ink);color:var(--sheet)}
+.btn:active{transform:translateY(1px)}
+.hint{font-size:12px;color:var(--muted)}
+.toast{font-size:13px;color:var(--seal);font-weight:700}
+
+.history h2,.bingo-head h2{font-family:var(--f-display);font-size:17px;margin:0 0 6px;letter-spacing:.08em}
+.history ol{margin:0;padding-left:1.4em;display:flex;flex-direction:column;gap:6px;color:var(--muted);font-size:14px}
+
+/* Bingo */
+.bingo-head{display:flex;justify-content:space-between;align-items:end;gap:12px;flex-wrap:wrap}
+.grid{display:grid;grid-template-columns:repeat(5,1fr);border-top:1px solid var(--ink);border-left:1px solid var(--ink);background:var(--sheet)}
+.cell{font:inherit;font-size:clamp(11px,2.9vw,14px);line-height:1.35;aspect-ratio:1;max-width:100%;padding:4px;
+  border:0;border-right:1px solid var(--ink);border-bottom:1px solid var(--ink);background:transparent;color:var(--ink);
+  cursor:pointer;display:grid;place-items:center;text-align:center;position:relative;word-break:break-all}
+.cell.on::after{content:"";position:absolute;inset:14%;border:2.5px solid var(--seal);border-radius:50%;transform:rotate(-10deg)}
+.cell.on{color:var(--seal);font-weight:700}
+.cell.free{font-family:var(--f-hand);color:var(--muted)}
+.cell.line{background:var(--seal-soft)}
+.banner{border:2px solid var(--seal);color:var(--seal);padding:12px 16px;font-family:var(--f-display);font-weight:900;font-size:18px;text-align:center}
+
+footer{font-size:12px;color:var(--muted);text-align:center}
+@media (max-width:420px){.row{grid-template-columns:64px 1fr}.stamp{width:66px;height:66px;font-size:15px;top:52px}.quote{padding-right:56px}}
+@media (prefers-reduced-motion:reduce){.stamp.pop{animation:none}.bar>i{transition:none}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <span class="eyebrow">校務會議・臨時動議前專用</span>
+    <h1>會議發言產生器</h1>
+    <p class="sub">需要舉手說點什麼，但其實沒有要說什麼的時候。</p>
+  </header>
+
+  <div class="tabs" role="tablist">
+    <button role="tab" id="tab-gen" aria-selected="true">產生發言</button>
+    <button role="tab" id="tab-bingo" aria-selected="false">會議賓果</button>
+  </div>
+
+  <section id="view-gen" style="display:flex;flex-direction:column;gap:20px">
+    <div class="sheet">
+      <dl>
+        <div class="row"><dt>案由</dt><dd id="topic"></dd></div>
+        <div class="row"><dt>發言人</dt><dd id="speaker"></dd></div>
+        <div class="row"><dt>發言內容</dt><dd><div class="quote" id="quote"></div></dd></div>
+        <div class="row"><dt>空洞指數</dt><dd>
+          <div class="meter"><div class="bar"><i id="bar"></i></div><span class="num" id="score"></span><span class="tier" id="tier"></span></div>
+        </dd></div>
+        <div class="row"><dt>預估佔時</dt><dd class="num" id="mins"></dd></div>
+      </dl>
+      <div class="stamp" id="stamp"></div>
+    </div>
+    <div class="actions">
+      <button class="btn primary" id="gen">再來一句</button>
+      <button class="btn" id="copy">複製發言</button>
+      <span class="toast" id="toast" hidden></span>
+      <span class="hint">電腦可按空白鍵</span>
+    </div>
+    <div class="history">
+      <h2>本次會議紀錄</h2>
+      <ol id="hist"></ol>
+    </div>
+  </section>
+
+  <section id="view-bingo" hidden style="flex-direction:column;gap:14px">
+    <div class="bingo-head">
+      <div>
+        <h2>會議賓果</h2>
+        <span class="hint">開會時聽到就圈起來，連成一線即可提議散會。</span>
+      </div>
+      <button class="btn" id="shuffle">換一張</button>
+    </div>
+    <div class="banner" id="banner" hidden>賓果！建議主席宣布散會。</div>
+    <div class="grid" id="grid"></div>
+  </section>
+
+  <footer>本產生器所有發言皆無實質內容，如有雷同，純屬制度使然。</footer>
+</div>
+
+<script>
+const pick=a=>a[Math.floor(Math.random()*a.length)];
+const pick2=a=>{const x=pick(a);let y=pick(a);while(y===x)y=pick(a);return [x,y]};
+
+const BUZZ=["素養導向","跨域整合","滾動式修正","校本課程","核心素養","自主學習","共好","多元評量","差異化教學","雙語教育","數位學習","生生用平板","公開授課","課程地圖","彈性學習課程","教師專業社群","永續發展","SDGs","以學生為中心","適性揚才","行政減量","精進計畫","校務評鑑","橫向聯繫","縱向連貫","資源盤點","標竿學習","PDCA","量化與質化並重","在地化","國際教育","社會情緒學習"];
+const OPEN=["不好意思佔用大家一點時間","我這邊簡單補充一下","呼應主席剛剛提到的","我不是要反對喔","站在第一線的角度","借這個機會分享一下","我很快講一下就好","我只是想提醒一下","我覺得大家講得都很好"];
+const PERSON=["主席","教務主任","學務組長","校長","輔導室","總務處","家長會"];
+const VERB=["盤點","滾動修正","扣合","深化","對焦","聚焦","鏈結","系統化整理","收斂","再拉高一個層次看"];
+const DEFER=["再研議","會後再找相關處室討論","下次會議再提","先試辦一學期看看","請各處室回去評估","列入追蹤事項","成立工作小組處理"];
+const CONSEQ=["評鑑的時候會比較難呈現","成果冊會不好寫","家長那邊可能會有聲音","教育處可能會來問","跟計畫目標會扣不太起來","明年經費可能會受影響"];
+const ABSTRACT=["核心價值","精神","脈絡","底層邏輯","初衷","整體架構"];
+const CLOSE=["以上，謝謝。","這是我一點小小的想法。","大概是這樣，時間關係就不多說。","不知道大家覺得怎麼樣？","以上報告。",""];
+const TOPICS=["本學期校慶籌備事宜","午餐廚餘減量方案","下學年課程計畫備查","走廊盆栽澆水排班","運動會進場順序","教室冷氣使用規範","家長日流程調整","資源回收場清潔分配","校園網路頻寬不足","影印機紙張用量控管"];
+const SPEAKERS=["教務處 林主任","學務處 張組長","總務處 吳主任","輔導室 黃老師","六年三班 導師","家長會 副會長","資訊組 組長","特教組 蔡老師"];
+const STAMPS=["照案\n通過","再議","同意\n備查","會後\n討論","列入\n追蹤","已閱"];
+
+const M=s=>`<mark>${s}</mark>`;
+const TEMPLATES=[
+ ()=>{const[a,b]=pick2(BUZZ);return `${pick(OPEN)}，這個案子是不是可以從${M(a)}的角度，${pick(VERB)}一下${M(b)}？${pick(CLOSE)}`},
+ ()=>`${pick(OPEN)}，我覺得${M(pick(BUZZ))}這個部分還是要${pick(VERB)}，不然${pick(CONSEQ)}。${pick(CLOSE)}`,
+ ()=>{const[a,b]=pick2(BUZZ);return `回應一下剛剛${pick(PERSON)}的意見，${M(a)}跟${M(b)}其實是一體兩面，我們可以${pick(VERB)}之後再${pick(DEFER)}。${pick(CLOSE)}`},
+ ()=>`這個案子原則上大家都同意，只是${M(pick(BUZZ))}的部分，可能還是要${pick(DEFER)}。${pick(CLOSE)}`,
+ ()=>{const[a,b]=pick2(BUZZ);return `我們要思考的其實不是${M(a)}，而是${M(b)}背後的${pick(ABSTRACT)}。${pick(CLOSE)}`},
+ ()=>`這個我們去年其實就有在做了，只是沒有用${M(pick(BUZZ))}的方式包裝進成果冊。建議${pick(DEFER)}。${pick(CLOSE)}`,
+ ()=>{const[a,b]=pick2(BUZZ);return `${pick(OPEN)}，建議成立一個${M(a)}工作小組，先做${M(b)}，再${pick(VERB)}。${pick(CLOSE)}`},
+ ()=>{const[a,b]=pick2(BUZZ);const c=pick(BUZZ);return `${pick(OPEN)}，如果我們把${M(a)}、${M(b)}跟${M(c)}串起來，${pick(VERB)}成一個亮點，${pick(["評鑑的時候就很好呈現","成果冊自己就會長出來","教育處一定會想來參訪","明年的計畫也就有了"])}。${pick(CLOSE)}`}
+];
+const TIERS=[[40,"尚有一點內容"],[60,"標準會議水準"],[80,"可直接抄進會議紀錄"],[101,"主席級發言"]];
+
+let current="",hist=[];
+const $=id=>document.getElementById(id);
+
+function generate(){
+  const html=pick(TEMPLATES)();
+  const buzz=(html.match(/<mark>/g)||[]).length;
+  const score=Math.min(99,35+buzz*16+Math.floor(Math.random()*14));
+  current=html.replace(/<\/?mark>/g,"");
+  $("topic").textContent=pick(TOPICS);
+  $("speaker").textContent=pick(SPEAKERS);
+  $("quote").innerHTML=html;
+  $("bar").style.width=score+"%";
+  $("score").textContent=score;
+  $("tier").textContent=TIERS.find(t=>score<t[0])[1];
+  $("mins").textContent=(2+Math.floor(Math.random()*6))+" 分鐘（含「我很快講一下」）";
+  const st=$("stamp");st.innerHTML=pick(STAMPS).replace("\n","<br>");
+  st.classList.remove("pop");void st.offsetWidth;st.classList.add("pop");
+  hist.unshift(current);hist=hist.slice(0,5);
+  $("hist").innerHTML=hist.slice(1).map(h=>`<li>${h}</li>`).join("")||'<li>尚無其他發言。</li>';
+}
+$("gen").onclick=generate;
+document.addEventListener("keydown",e=>{
+  if(e.code==="Space"&&!$("view-gen").hidden&&e.target.tagName!=="BUTTON"){e.preventDefault();generate()}
+});
+$("copy").onclick=()=>{
+  const t=$("toast");
+  const done=msg=>{t.textContent=msg;t.hidden=false;clearTimeout(t._h);t._h=setTimeout(()=>t.hidden=true,1600)};
+  try{navigator.clipboard.writeText(current).then(()=>done("已複製，請自然地唸出來"),()=>{selectQuote();done("請手動複製選取的文字")})}
+  catch(e){selectQuote();done("請手動複製選取的文字")}
+};
+function selectQuote(){const r=document.createRange();r.selectNodeContents($("quote"));const s=getSelection();s.removeAllRanges();s.addRange(r)}
+
+/* Tabs */
+function show(which){
+  const g=which==="gen";
+  $("tab-gen").setAttribute("aria-selected",g);$("tab-bingo").setAttribute("aria-selected",!g);
+  $("view-gen").hidden=!g;$("view-bingo").hidden=g;
+  $("view-bingo").style.display=g?"":"flex";
+}
+$("tab-gen").onclick=()=>show("gen");$("tab-bingo").onclick=()=>show("bingo");
+
+/* Bingo */
+const BINGO=["素養導向","滾動式修正","跨域整合","原則上","會後再議","配合辦理","成果冊","亮點","我簡單補充","呼應剛剛","一體兩面","底層邏輯","第一線","課程地圖","教育處來文","評鑑","共好","先試辦看看","工作小組","我不是反對","列入追蹤","時間關係","拉高層次","盤點","扣合","家長會有聲音","去年就有做","以學生為中心","SDGs","大家辛苦了","依規定辦理","經費有限","下次再提","行政減量"];
+const LINES=[];
+for(let i=0;i<5;i++){LINES.push([0,1,2,3,4].map(j=>i*5+j));LINES.push([0,1,2,3,4].map(j=>j*5+i))}
+LINES.push([0,6,12,18,24],[4,8,12,16,20]);
+let marks=[];
+function deal(){
+  const pool=[...BINGO].sort(()=>Math.random()-.5).slice(0,24);
+  pool.splice(12,0,"有沒有\n臨時動議？");
+  marks=pool.map((_,i)=>i===12);
+  $("grid").innerHTML=pool.map((w,i)=>`<button class="cell${i===12?" free on":""}" data-i="${i}" aria-pressed="${i===12}">${w.replace("\n","<br>")}</button>`).join("");
+  check();
+}
+$("grid").onclick=e=>{
+  const c=e.target.closest(".cell");if(!c||c.classList.contains("free"))return;
+  const i=+c.dataset.i;marks[i]=!marks[i];c.classList.toggle("on",marks[i]);c.setAttribute("aria-pressed",marks[i]);check();
+};
+function check(){
+  const cells=[...document.querySelectorAll(".cell")];
+  cells.forEach(c=>c.classList.remove("line"));
+  const won=LINES.filter(l=>l.every(i=>marks[i]));
+  won.flat().forEach(i=>cells[i].classList.add("line"));
+  $("banner").hidden=!won.length;
+  if(won.length>1)$("banner").textContent=`${won.length} 條線！這場會議可以直接寫成果冊了。`;
+  else $("banner").textContent="賓果！建議主席宣布散會。";
+}
+$("shuffle").onclick=deal;
+
+generate();deal();
+</script>
+</body>
+</html>
